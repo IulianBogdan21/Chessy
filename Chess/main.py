@@ -4,7 +4,7 @@ responsible for user input handling and also displays the current GameState obje
 """
 
 import pygame as p
-from Chess import engine
+from Chess import engine, aiMoveFinder
 
 # width and height of the board
 WIDTH = HEIGHT = 512
@@ -59,12 +59,17 @@ def main():
     # click = 2 tuples: [(6, 4), (4, 4)]
     player_clicks = []
     game_over = False
+    # if human plays white, variable is true; if AI is playing, than false
+    player_one = True
+    # if human plays black, variable is true; if AI is playing, than false
+    player_two = False
     while is_program_running:
+        is_human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
         for event in p.event.get():
             if event.type == p.QUIT:
                 is_program_running = False
             elif event.type == p.MOUSEBUTTONDOWN:
-                if not game_over:
+                if not game_over and is_human_turn:
                     # coordinates of mouse position
                     location = p.mouse.get_pos()
                     mouse_column = location[0] // SQUARE_SIZE
@@ -106,6 +111,15 @@ def main():
                     player_clicks = []
                     move_made = False
                     animate = False
+
+        # AI finder - finder of moves
+        if not game_over and not is_human_turn:
+            ai_move = aiMoveFinder.find_best_move(game_state, valid_moves)
+            if ai_move is None:
+                ai_move = aiMoveFinder.find_random_move(valid_moves)
+            game_state.make_move(ai_move)
+            move_made = True
+            animate = True
 
         if move_made:
             if animate:
