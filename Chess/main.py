@@ -103,6 +103,7 @@ def main():
                     game_state.undo_move()
                     move_made = True
                     animate = False
+                    game_over = False
                 # reset the board on r key
                 if event.key == p.K_r:
                     game_state = engine.GameState()
@@ -111,6 +112,7 @@ def main():
                     player_clicks = []
                     move_made = False
                     animate = False
+                    game_over = False
 
         # AI finder - finder of moves
         if not game_over and not is_human_turn:

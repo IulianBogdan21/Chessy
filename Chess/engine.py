@@ -141,6 +141,9 @@ class GameState:
                     self.board[move.end_row][move.end_column - 2] = self.board[move.end_row][move.end_column + 1]
                     self.board[move.end_row][move.end_column + 1] = '--'
 
+            self.checkmate = False
+            self.stalemate = False
+
     """
     update castle rights given the move
     """
