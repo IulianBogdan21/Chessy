@@ -172,6 +172,20 @@ class GameState:
                 elif move.start_column == 7:
                     self.current_castling_rights.black_king_side = False
 
+        # if a rook is captured, cancel castle rights
+        if move.piece_captured == 'wR':
+            if move.end_row == 7:
+                if move.end_column == 0:
+                    self.current_castling_rights.white_queen_side = False
+                elif move.end_column == 7:
+                    self.current_castling_rights.white_king_side = False
+        elif move.piece_captured == 'bR':
+            if move.end_row == 0:
+                if move.end_column == 0:
+                    self.current_castling_rights.black_queen_side = False
+                elif move.end_column == 7:
+                    self.current_castling_rights.black_king_side = False
+
     """
     get all moves for one side also considering checks
     """
@@ -596,11 +610,19 @@ class GameState:
                 (not self.white_to_move and self.current_castling_rights.black_queen_side):
             self.get_queen_side_castle_moves(row, column, moves)
 
+    """
+    generate king side castle moves for the king at (row, column)
+    method called only if player still has castle rights king side
+    """
     def get_king_side_castle_moves(self, row, column, moves):
         if self.board[row][column + 1] == '--' and self.board[row][column + 2] == '--':
             if not self.square_under_attack(row, column + 1) and not self.square_under_attack(row, column + 2):
                 moves.append(Move((row, column), (row, column + 2), self.board, is_castle_move=True))
 
+    """
+    generate queen side castle moves for the king at (row, column)
+    method called only if player still has castle rights queen side
+    """
     def get_queen_side_castle_moves(self, row, column, moves):
         if self.board[row][column - 1] == '--' and self.board[row][column - 2] == '--' \
                 and self.board[row][column - 3] == '--':
