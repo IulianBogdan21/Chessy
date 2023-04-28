@@ -238,6 +238,11 @@ def animate_move(move, screen, board, clock):
         p.draw.rect(screen, colour, end_square)
         # draw captured piece into the rectangle
         if move.piece_captured != '--':
+            # special animation for enpassant
+            if move.is_enpassant_move:
+                enpassant_row = move.end_row + 1 if move.piece_captured[0] == 'b' else move.end_row - 1
+                end_square = p.Rect(move.end_column * SQUARE_SIZE,
+                                    enpassant_row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
             screen.blit(IMAGES[move.piece_captured], end_square)
         # draw the moving piece
         screen.blit(IMAGES[move.piece_moved], p.Rect(column * SQUARE_SIZE, row * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
