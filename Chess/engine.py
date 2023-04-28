@@ -33,6 +33,7 @@ class GameState:
         self.checks = []
         # square coordinates where en passant capture is possible
         self.enpassant_possible = ()
+        self.enpassant_possible_log = [self.enpassant_possible]
         self.checkmate = False
         self.stalemate = False
         self.current_castling_rights = CastleRights(True, True, True, True)
@@ -91,6 +92,8 @@ class GameState:
                 # delete old rook position
                 self.board[move.end_row][move.end_column - 2] = '--'
 
+        self.enpassant_possible_log.append(self.enpassant_possible)
+
         # update castling rights
         # update rights on rook and king moves
         self.update_castling_rights(move)
@@ -121,10 +124,9 @@ class GameState:
                 self.board[move.end_row][move.end_column] = '--'
                 # restore opponent piece
                 self.board[move.start_row][move.end_column] = move.piece_captured
-                self.enpassant_possible = (move.end_row, move.end_column)
-            # undo 2 square pawn advance
-            if move.piece_moved[1] == 'p' and abs(move.start_row - move.end_row) == 2:
-                self.enpassant_possible = ()
+
+            self.enpassant_possible_log.pop()
+            self.enpassant_possible = self.enpassant_possible_log[-1]
 
             # undo castling rights - getting back to previous castling rights
             self.castle_rights_log.pop()
