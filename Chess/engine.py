@@ -616,6 +616,7 @@ class GameState:
     generate king side castle moves for the king at (row, column)
     method called only if player still has castle rights king side
     """
+
     def get_king_side_castle_moves(self, row, column, moves):
         if self.board[row][column + 1] == '--' and self.board[row][column + 2] == '--':
             if not self.square_under_attack(row, column + 1) and not self.square_under_attack(row, column + 2):
@@ -625,6 +626,7 @@ class GameState:
     generate queen side castle moves for the king at (row, column)
     method called only if player still has castle rights queen side
     """
+
     def get_queen_side_castle_moves(self, row, column, moves):
         if self.board[row][column - 1] == '--' and self.board[row][column - 2] == '--' \
                 and self.board[row][column - 3] == '--':
@@ -674,6 +676,8 @@ class Move:
         self.is_enpassant_move = is_enpassant_move
         if self.is_enpassant_move:
             self.piece_captured = 'wp' if self.piece_moved == 'bp' else 'bp'
+
+        self.is_capture = self.piece_captured != '--'
         # castle move
         self.is_castle_move = is_castle_move
         self.move_id = self.start_row * 1000 + self.start_column * 100 + self.end_row * 10 + self.end_column
@@ -693,6 +697,26 @@ class Move:
 
     def get_rank_file(self, row, column):
         return self.column_to_file[column] + self.row_to_rank[row]
+
+    def __str__(self):
+        # castle move
+        if self.is_castle_move:
+            return "O-O" if self.end_column == 6 else "O-O-O"
+        end_square = self.get_rank_file(self.end_row, self.end_column)
+        # pawn move
+        if self.piece_moved[1] == 'p':
+            if self.is_capture:
+                return self.column_to_file[self.start_column] + "x" + end_square
+            else:
+                return end_square
+            # pawn promotion
+        # two of same type of pieces moving to a square - Nbd2
+        # check and checkmate move
+
+        move_string = self.piece_moved[1]
+        if self.is_capture:
+            move_string += 'x'
+        return move_string + end_square
 
 
 """
