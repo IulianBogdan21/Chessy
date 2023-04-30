@@ -5,6 +5,7 @@ responsible for user input handling and also displays the current GameState obje
 
 import pygame as p
 from Chess import engine, aiMoveFinder
+from multiprocessing import Process, Queue
 
 # width and height of the board
 BOARD_WIDTH = BOARD_HEIGHT = 512
@@ -21,6 +22,7 @@ MAXIMUM_FPS = 15
 IMAGES = {}
 
 global colours
+global return_queue
 
 """
 Initialize a global dictionary of images (called only once in main)
@@ -64,16 +66,20 @@ def main():
     player_clicks = []
     game_over = False
     # if human plays white, variable is true; if AI is playing, than false
-    player_one = False
+    player_one = True
     # if human plays black, variable is true; if AI is playing, than false
     player_two = False
+    # used for threading and responsiveness while AI thinks
+    ai_thinking = False
+    move_finder_process = None
+    move_undone = False
     while is_program_running:
         is_human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
         for event in p.event.get():
             if event.type == p.QUIT:
                 is_program_running = False
             elif event.type == p.MOUSEBUTTONDOWN:
-                if not game_over and is_human_turn:
+                if not game_over:
                     # coordinates of mouse position
                     location = p.mouse.get_pos()
                     mouse_column = location[0] // SQUARE_SIZE
@@ -87,7 +93,7 @@ def main():
                         selected_square = (mouse_row, mouse_column)
                         player_clicks.append(selected_square)
                     # check if it was user second click
-                    if len(player_clicks) == 2:
+                    if len(player_clicks) == 2 and is_human_turn:
                         move = engine.Move(player_clicks[0], player_clicks[1], game_state.board)
                         print(move.get_chess_notation())
                         for i in range(len(valid_moves)):
@@ -108,6 +114,10 @@ def main():
                     move_made = True
                     animate = False
                     game_over = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
                 # reset the board on r key
                 if event.key == p.K_r:
                     game_state = engine.GameState()
@@ -117,15 +127,33 @@ def main():
                     move_made = False
                     animate = False
                     game_over = False
+                    if ai_thinking:
+                        move_finder_process.terminate()
+                        ai_thinking = False
+                    move_undone = True
 
         # AI finder - finder of moves
-        if not game_over and not is_human_turn:
-            ai_move = aiMoveFinder.find_best_move(game_state, valid_moves)
-            if ai_move is None:
-                ai_move = aiMoveFinder.find_random_move(valid_moves)
-            game_state.make_move(ai_move)
-            move_made = True
-            animate = True
+        global return_queue
+        if not game_over and not is_human_turn and not move_undone:
+            if not ai_thinking:
+                ai_thinking = True
+                print("thinking ...")
+                # queue used to pass data between threads
+                return_queue = Queue()
+                move_finder_process = Process(target=aiMoveFinder.find_best_move, args=(game_state, valid_moves,
+                                                                                        return_queue))
+                # call method to find best move from AI
+                move_finder_process.start()
+
+            if not move_finder_process.is_alive():
+                print("done thinking!")
+                ai_thinking = False
+                ai_move = return_queue.get()
+                if ai_move is None:
+                    ai_move = aiMoveFinder.find_random_move(valid_moves)
+                game_state.make_move(ai_move)
+                move_made = True
+                animate = True
 
         if move_made:
             if animate:
@@ -133,6 +161,7 @@ def main():
             valid_moves = game_state.get_valid_moves()
             move_made = False
             animate = False
+            move_undone = False
 
         draw_game_state(screen, game_state, valid_moves, selected_square, move_log_font)
 

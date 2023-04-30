@@ -99,13 +99,13 @@ method that calls for negamax search
 """
 
 
-def find_best_move(game_state, valid_moves):
+def find_best_move(game_state, valid_moves, return_queue):
     global next_move
     next_move = None
     random.shuffle(valid_moves)
     find_move_negamax_alpha_beta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE,
                                  1 if game_state.white_to_move else -1)
-    return next_move
+    return_queue.put(next_move)
 
 
 """
@@ -118,7 +118,6 @@ def find_move_negamax_alpha_beta(game_state, valid_moves, depth, alpha, beta, tu
     if depth == 0:
         return turn_multiplier * score_board(game_state)
 
-    # move ordering - implement later
     maximum_score = -CHECKMATE
     for move in valid_moves:
         game_state.make_move(move)
