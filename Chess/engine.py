@@ -377,69 +377,97 @@ class GameState:
     """
 
     def get_pawn_moves(self, row, column, moves):
-
         piece_pinned = False
-        pin_direction = ()
-        # first we check if the piece we want to move is pinned
+        pin_directions = ()
         for index in range(len(self.pins) - 1, -1, -1):
             if self.pins[index][0] == row and self.pins[index][1] == column:
                 piece_pinned = True
-                pin_direction = (self.pins[index][2], self.pins[index][3])
+                pin_directions = (self.pins[index][2], self.pins[index][3])
                 self.pins.remove(self.pins[index])
                 break
 
-        # focus on white pawns
         if self.white_to_move:
-            # one square ahead is empty
-            if self.board[row - 1][column] == "--":
-                if not piece_pinned or pin_direction == (-1, 0):
-                    moves.append(Move((row, column), (row - 1, column), self.board))
-                    # check if a 2 square move ahead is possible for pawn
-                    if row == 6 and self.board[row - 2][column] == "--":
-                        moves.append(Move((row, column), (row - 2, column), self.board))
-            # check for capture moves from pawns (left captures)
-            if column - 1 >= 0:
-                # there is an opponent piece to capture
-                if self.board[row - 1][column - 1][0] == 'b':
-                    if not piece_pinned or pin_direction == (-1, -1):
-                        moves.append(Move((row, column), (row - 1, column - 1), self.board))
-                elif (row - 1, column - 1) == self.enpassant_possible:
-                    if not piece_pinned or pin_direction == (-1, -1):
-                        moves.append(Move((row, column), (row - 1, column - 1), self.board, is_enpassant_move=True))
-            # check for capture moves from pawns (right captures)
-            if column + 1 <= 7:
-                if self.board[row - 1][column + 1][0] == 'b':
-                    if not piece_pinned or pin_direction == (-1, 1):
-                        moves.append(Move((row, column), (row - 1, column + 1), self.board))
-                elif (row - 1, column + 1) == self.enpassant_possible:
-                    if not piece_pinned or pin_direction == (-1, 1):
-                        moves.append(Move((row, column), (row - 1, column + 1), self.board, is_enpassant_move=True))
-        # focus on black pawns
+            move_amount = -1
+            start_row = 6
+            enemy_colour = 'b'
+            king_row, king_column = self.white_king_location
         else:
-            # one square ahead is empty
-            if self.board[row + 1][column] == "--":
-                if not piece_pinned or pin_direction == (1, 0):
-                    moves.append(Move((row, column), (row + 1, column), self.board))
-                    # check if a 2 square move ahead is possible for pawn
-                    if row == 1 and self.board[row + 2][column] == "--":
-                        moves.append(Move((row, column), (row + 2, column), self.board))
-            # check for capture moves from pawns (left captures)
-            if column - 1 >= 0:
-                # there is an opponent piece to capture
-                if self.board[row + 1][column - 1][0] == 'w':
-                    if not piece_pinned or pin_direction == (1, -1):
-                        moves.append(Move((row, column), (row + 1, column - 1), self.board))
-                elif (row + 1, column - 1) == self.enpassant_possible:
-                    if not piece_pinned or pin_direction == (1, -1):
-                        moves.append(Move((row, column), (row + 1, column - 1), self.board, is_enpassant_move=True))
-            # check for capture moves from pawns (right captures)
-            if column + 1 <= 7:
-                if self.board[row + 1][column + 1][0] == 'w':
-                    if not piece_pinned or pin_direction == (1, 1):
-                        moves.append(Move((row, column), (row + 1, column + 1), self.board))
-                elif (row + 1, column + 1) == self.enpassant_possible:
-                    if not piece_pinned or pin_direction == (1, 1):
-                        moves.append(Move((row, column), (row + 1, column + 1), self.board, is_enpassant_move=True))
+            move_amount = 1
+            start_row = 1
+            enemy_colour = 'w'
+            king_row, king_column = self.black_king_location
+
+        # square move
+        if self.board[row + move_amount][column] == "--":
+            if not piece_pinned or pin_directions == (move_amount, 0):
+                moves.append(Move((row, column), (row + move_amount, column), self.board))
+                # 2 square moves
+                if row == start_row and self.board[row + 2 * move_amount][column] == "--":
+                    moves.append(Move((row, column), (row + 2 * move_amount, column), self.board))
+        # capture to left
+        if column - 1 >= 0:
+            if not piece_pinned or pin_directions == (move_amount, -1):
+                if self.board[row + move_amount][column - 1][0] == enemy_colour:
+                    moves.append(Move((row, column), (row + move_amount, column - 1), self.board))
+                if (row + move_amount, column - 1) == self.enpassant_possible:
+                    # prevent en passant capture that generate checks from opponent queen or rook
+                    attacking_piece = blocking_piece = False
+                    if king_row == row:
+                        # king is left of the pawn
+                        if king_column < column:
+                            # blocking pieces between pawn and king or outside
+                            inside_range = range(king_column + 1, column - 1)
+                            outside_range = range(column + 1, 8)
+                        # king is right of the pawn
+                        else:
+                            inside_range = range(king_column - 1, column, -1)
+                            outside_range = range(column - 2, -1, -1)
+                        for index in inside_range:
+                            # some other pieces besides en passant pawns blocks
+                            if self.board[row][index] != "--":
+                                blocking_piece = True
+                        for index in outside_range:
+                            square = self.board[row][index]
+                            # attacking piece
+                            if square[0] == enemy_colour and (square[1] == "R" or square[1] == "Q"):
+                                attacking_piece = True
+                            elif square != "--":
+                                blocking_piece = True
+                    if not attacking_piece or blocking_piece:
+                        moves.append(Move((row, column), (row + move_amount, column - 1), self.board,
+                                          is_enpassant_move=True))
+        # capture to right
+        if column + 1 <= 7:
+            if not piece_pinned or pin_directions == (move_amount, 1):
+                if self.board[row + move_amount][column + 1][0] == enemy_colour:
+                    moves.append(Move((row, column), (row + move_amount, column + 1), self.board))
+                if (row + move_amount, column + 1) == self.enpassant_possible:
+                    # prevent en passant capture that generate checks from opponent queen or rook
+                    attacking_piece = blocking_piece = False
+                    if king_row == row:
+                        # king is left of the pawn
+                        if king_column < column:
+                            # blocking pieces between pawn and king or outside
+                            inside_range = range(king_column + 1, column)
+                            outside_range = range(column + 2, 8)
+                        # king is right of the pawn
+                        else:
+                            inside_range = range(king_column - 1, column + 1, -1)
+                            outside_range = range(column - 1, -1, -1)
+                        for index in inside_range:
+                            # some other pieces besides en passant pawns blocks
+                            if self.board[row][index] != "--":
+                                blocking_piece = True
+                        for index in outside_range:
+                            square = self.board[row][index]
+                            # attacking piece
+                            if square[0] == enemy_colour and (square[1] == "R" or square[1] == "Q"):
+                                attacking_piece = True
+                            elif square != "--":
+                                blocking_piece = True
+                    if not attacking_piece or blocking_piece:
+                        moves.append(Move((row, column), (row + move_amount, column + 1), self.board,
+                                          is_enpassant_move=True))
 
     """
     get all rook moves for rooks located at row and column given and add possible moves to move array
