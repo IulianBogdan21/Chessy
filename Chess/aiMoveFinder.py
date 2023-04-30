@@ -10,9 +10,80 @@ piece_score = {
     "N": 3,
     "p": 1
 }
+
+# create score arrays for all pieces
+
+knight_scores = [[1, 1, 1, 1, 1, 1, 1, 1],
+                 [1, 2, 2, 2, 2, 2, 2, 1],
+                 [1, 2, 3, 3, 3, 3, 2, 1],
+                 [1, 2, 3, 4, 4, 3, 2, 1],
+                 [1, 2, 3, 4, 4, 3, 2, 1],
+                 [1, 2, 3, 3, 3, 3, 2, 1],
+                 [1, 2, 2, 2, 2, 2, 2, 1],
+                 [1, 1, 1, 1, 1, 1, 1, 1]
+                 ]
+
+bishop_scores = [[4, 3, 2, 1, 1, 2, 3, 4],
+                 [3, 4, 3, 2, 2, 3, 4, 3],
+                 [2, 3, 4, 3, 3, 4, 3, 2],
+                 [1, 2, 3, 4, 4, 3, 2, 1],
+                 [1, 2, 3, 4, 4, 3, 2, 1],
+                 [2, 3, 4, 3, 3, 4, 3, 2],
+                 [3, 4, 3, 2, 2, 3, 4, 3],
+                 [4, 3, 2, 1, 1, 2, 3, 4]
+                 ]
+
+queen_scores = [[1, 1, 1, 3, 1, 1, 1, 1],
+                [1, 2, 3, 3, 3, 1, 1, 1],
+                [1, 4, 3, 3, 3, 4, 2, 1],
+                [1, 2, 3, 3, 3, 2, 2, 1],
+                [1, 2, 3, 3, 3, 2, 2, 1],
+                [1, 4, 3, 3, 3, 4, 2, 1],
+                [1, 1, 2, 3, 3, 1, 1, 1],
+                [1, 1, 1, 3, 1, 1, 1, 1]
+                ]
+
+rook_scores = [[4, 3, 4, 4, 4, 4, 3, 4],
+               [4, 4, 4, 4, 4, 4, 4, 4],
+               [1, 1, 2, 3, 3, 2, 1, 1],
+               [1, 2, 3, 3, 3, 3, 2, 1],
+               [1, 2, 3, 3, 3, 3, 2, 1],
+               [1, 1, 2, 2, 2, 2, 1, 1],
+               [4, 4, 4, 4, 4, 4, 4, 4],
+               [4, 3, 4, 4, 4, 4, 3, 4]
+               ]
+
+white_pawn_scores = [[8, 8, 8, 8, 8, 8, 8, 8],
+                     [8, 8, 8, 8, 8, 8, 8, 8],
+                     [5, 6, 6, 7, 7, 6, 6, 5],
+                     [2, 3, 3, 5, 5, 3, 3, 2],
+                     [1, 2, 3, 4, 4, 3, 2, 1],
+                     [1, 1, 2, 3, 3, 2, 1, 1],
+                     [1, 1, 1, 0, 0, 1, 1, 1],
+                     [0, 0, 0, 0, 0, 0, 0, 0]
+                     ]
+
+black_pawn_scores = [[0, 0, 0, 0, 0, 0, 0, 0],
+                     [1, 1, 1, 0, 0, 1, 1, 1],
+                     [1, 1, 2, 3, 3, 2, 1, 1],
+                     [1, 2, 3, 4, 4, 3, 2, 1],
+                     [2, 3, 3, 5, 5, 3, 3, 2],
+                     [5, 6, 6, 7, 7, 6, 6, 5],
+                     [8, 8, 8, 8, 8, 8, 8, 8],
+                     [8, 8, 8, 8, 8, 8, 8, 8]
+                     ]
+
+piece_position_scores = {"N": knight_scores,
+                         "Q": queen_scores,
+                         "B": bishop_scores,
+                         "R": rook_scores,
+                         "bp": black_pawn_scores,
+                         "wp": white_pawn_scores
+                         }
+
 CHECKMATE = 1000
 STALEMATE = 0
-DEPTH = 2
+DEPTH = 3
 
 """
 find random move for AI
@@ -31,6 +102,7 @@ method that calls for negamax search
 def find_best_move(game_state, valid_moves):
     global next_move
     next_move = None
+    random.shuffle(valid_moves)
     find_move_negamax_alpha_beta(game_state, valid_moves, DEPTH, -CHECKMATE, CHECKMATE,
                                  1 if game_state.white_to_move else -1)
     return next_move
@@ -85,10 +157,21 @@ def score_board(game_state):
         return STALEMATE
 
     score = 0
-    for row in game_state.board:
-        for square in row:
-            if square[0] == 'w':
-                score += piece_score[square[1]]
-            elif square[0] == 'b':
-                score -= piece_score[square[1]]
+    for row in range(len(game_state.board)):
+        for column in range(len(game_state.board[row])):
+            square = game_state.board[row][column]
+            if square != "--":
+                # score it positionally
+                piece_position_score = 0
+                if square[1] != "K":
+                    # for pawns
+                    if square[1] == "p":
+                        piece_position_score = piece_position_scores[square][row][column]
+                    else:
+                        piece_position_score = piece_position_scores[square[1]][row][column]
+
+                if square[0] == 'w':
+                    score += piece_score[square[1]] + piece_position_score * .1
+                elif square[0] == 'b':
+                    score -= piece_score[square[1]] + piece_position_score * .1
     return score

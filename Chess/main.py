@@ -64,9 +64,9 @@ def main():
     player_clicks = []
     game_over = False
     # if human plays white, variable is true; if AI is playing, than false
-    player_one = True
+    player_one = False
     # if human plays black, variable is true; if AI is playing, than false
-    player_two = True
+    player_two = False
     while is_program_running:
         is_human_turn = (game_state.white_to_move and player_one) or (not game_state.white_to_move and player_two)
         for event in p.event.get():
