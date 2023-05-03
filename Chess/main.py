@@ -66,7 +66,7 @@ def main():
     player_clicks = []
     game_over = False
     # if human plays white, variable is true; if AI is playing, than false
-    player_one = True
+    player_one = False
     # if human plays black, variable is true; if AI is playing, than false
     player_two = False
     # used for threading and responsiveness while AI thinks
