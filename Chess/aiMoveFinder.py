@@ -109,7 +109,67 @@ def find_best_move(game_state, valid_moves, return_queue):
 
 
 """
+minimax algorithm for finding best move
+"""
+
+
+def find_move_minimax(game_state, valid_moves, depth, white_to_move):
+    global next_move
+    if depth == 0:
+        return score_board(game_state)
+
+    if white_to_move:
+        maximum_score = -CHECKMATE
+        for move in valid_moves:
+            game_state.make_move(move)
+            next_moves = game_state.get_valid_moves()
+            score = find_move_minimax(game_state, next_moves, depth - 1, False)
+            if score > maximum_score:
+                maximum_score = score
+                if depth == DEPTH:
+                    next_move = move
+            game_state.undo_move()
+        return maximum_score
+
+    else:
+        minimum_score = CHECKMATE
+        for move in valid_moves:
+            game_state.make_move(move)
+            next_moves = game_state.get_valid_moves()
+            score = find_move_minimax(game_state, next_moves, depth - 1, True)
+            if score < minimum_score:
+                minimum_score = score
+                if depth == DEPTH:
+                    next_move = move
+            game_state.undo_move()
+        return minimum_score
+
+
+"""
 negamax algorithm for finding best move
+"""
+
+
+def find_move_negamax(game_state, valid_moves, depth, turn_multiplier):
+    global next_move
+    if depth == 0:
+        return turn_multiplier * score_board(game_state)
+
+    maximum_score = -CHECKMATE
+    for move in valid_moves:
+        game_state.make_move(move)
+        next_moves = game_state.get_valid_moves()
+        score = -find_move_negamax(game_state, next_moves, depth - 1, -turn_multiplier)
+        if score > maximum_score:
+            maximum_score = score
+            if depth == DEPTH:
+                next_move = move
+        game_state.undo_move()
+    return maximum_score
+
+
+"""
+alpha beta pruning algorithm for finding best move
 """
 
 
