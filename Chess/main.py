@@ -10,7 +10,7 @@ from multiprocessing import Process, Queue
 # width and height of the board
 BOARD_WIDTH = BOARD_HEIGHT = 512
 # width and height for the move log panel
-MOVE_LOG_PANEL_WIDTH = 250
+MOVE_LOG_PANEL_WIDTH = 300
 MOVE_LOG_PANEL_HEIGHT = BOARD_HEIGHT
 # standard number of rows and columns
 DIMENSION = 8
@@ -66,7 +66,7 @@ def main():
     player_clicks = []
     game_over = False
     # if human plays white, variable is true; if AI is playing, than false
-    player_one = False
+    player_one = True
     # if human plays black, variable is true; if AI is playing, than false
     player_two = False
     # used for threading and responsiveness while AI thinks
@@ -110,73 +110,142 @@ def main():
             # undo move when pressing z key
             elif event.type == p.KEYDOWN:
                 if event.key == p.K_z:
-                    game_state.undo_move()
-                    move_made = True
-                    animate = False
-                    game_over = False
-                    if ai_thinking:
-                        move_finder_process.terminate()
-                        ai_thinking = False
-                    move_undone = True
+                    move_made, animate, ai_thinking, move_undone, game_over = \
+                        handle_undo_move(game_state, move_finder_process, ai_thinking)
                 # reset the board on r key
                 if event.key == p.K_r:
-                    game_state = engine.GameState()
-                    valid_moves = game_state.get_valid_moves()
-                    selected_square = ()
-                    player_clicks = []
-                    move_made = False
-                    animate = False
-                    game_over = False
-                    if ai_thinking:
-                        move_finder_process.terminate()
-                        ai_thinking = False
-                    move_undone = True
+                    game_state, valid_moves, selected_square, player_clicks, move_made, animate, ai_thinking, \
+                        move_undone, game_over = handle_restart_game(move_finder_process, ai_thinking)
 
         # AI finder - finder of moves
-        global return_queue
         if not game_over and not is_human_turn and not move_undone:
             if not ai_thinking:
-                ai_thinking = True
-                print("thinking ...")
-                # queue used to pass data between threads
-                return_queue = Queue()
-                move_finder_process = Process(target=aiMoveFinder.find_best_move, args=(game_state, valid_moves,
-                                                                                        return_queue))
-                # call method to find best move from AI
-                move_finder_process.start()
+                # engine starts thinking about new move
+                move_finder_process, ai_thinking = engine_starts_thinking(game_state, valid_moves)
 
+            # engine is done thinking, so we take the move from the queue, and we make the move
             if not move_finder_process.is_alive():
-                print("done thinking!")
-                ai_thinking = False
-                ai_move = return_queue.get()
-                if ai_move is None:
-                    ai_move = aiMoveFinder.find_random_move(valid_moves)
-                game_state.make_move(ai_move)
-                move_made = True
-                animate = True
+                ai_move, ai_thinking, move_made, animate = make_move_after_ai_thinking(game_state, valid_moves)
 
+        # animate last move and get next valid moves
         if move_made:
-            if animate:
-                animate_move(game_state.move_log[-1], screen, game_state.board, clock)
-            valid_moves = game_state.get_valid_moves()
-            move_made = False
-            animate = False
-            move_undone = False
+            valid_moves, move_made, animate, move_undone = animate_move_and_get_next_valid_moves(game_state,
+                                                                                                 screen, clock, animate)
 
         draw_game_state(screen, game_state, valid_moves, selected_square, move_log_font)
-
-        if game_state.checkmate or game_state.stalemate:
-            game_over = True
-            text = 'Stalemate' if game_state.stalemate else 'Black wins by checkmate' if game_state.white_to_move else \
-                'White wins by checkmate'
-            draw_endgame_text(screen, text)
+        # print message if checkmate or stalemate
+        game_over = print_message_if_checkmate_or_stalemate(game_state, screen, game_over)
 
         clock.tick(MAXIMUM_FPS)
         p.display.flip()
 
 
 """
-responsible for all design and graphics withing the current state of the game
+method that makes the move after ai finishes thinking
+"""
+
+
+def make_move_after_ai_thinking(game_state, valid_moves):
+    print("done thinking!")
+    ai_thinking = False
+    ai_move = return_queue.get()
+    if ai_move is None:
+        ai_move = aiMoveFinder.find_random_move(valid_moves)
+    game_state.make_move(ai_move)
+    move_made = True
+    animate = True
+    return ai_move, ai_thinking, move_made, animate
+
+
+"""
+method that gets the engine to start thinking about a new move given the current state and valid moves
+another thread is used for this task
+"""
+
+
+def engine_starts_thinking(game_state, valid_moves):
+    global return_queue
+    ai_thinking = True
+    print("thinking ...")
+    # queue used to pass data between threads
+    return_queue = Queue()
+    move_finder_process = Process(target=aiMoveFinder.find_best_move, args=(game_state, valid_moves,
+                                                                            return_queue))
+    # call method to find best move from AI
+    move_finder_process.start()
+    return move_finder_process, ai_thinking
+
+
+"""
+method that animates last move and sets some boolean to False
+also, next valid moves are generated 
+"""
+
+
+def animate_move_and_get_next_valid_moves(game_state, screen, clock, animate):
+    if animate:
+        animate_move(game_state.move_log[-1], screen, game_state.board, clock)
+    valid_moves = game_state.get_valid_moves()
+    move_made = False
+    animate = False
+    move_undone = False
+    return valid_moves, move_made, animate, move_undone
+
+
+"""
+method that handles the event created by pressing z keyboard which means undo
+"""
+
+
+def handle_undo_move(game_state, move_finder_process, ai_thinking):
+    game_state.undo_move()
+    move_made = True
+    animate = False
+    game_over = False
+    if ai_thinking:
+        move_finder_process.terminate()
+        ai_thinking = False
+    move_undone = True
+    return move_made, animate, ai_thinking, move_undone, game_over
+
+
+"""
+method that handles the event created by pressing r keyboard which means game reset
+"""
+
+
+def handle_restart_game(move_finder_process, ai_thinking):
+    game_state = engine.GameState()
+    valid_moves = game_state.get_valid_moves()
+    selected_square = ()
+    player_clicks = []
+    move_made = False
+    animate = False
+    game_over = False
+    if ai_thinking:
+        move_finder_process.terminate()
+        ai_thinking = False
+    move_undone = True
+    return game_state, valid_moves, selected_square, player_clicks, move_made, animate, ai_thinking, move_undone, \
+        game_over
+
+
+"""
+method that prints a message at the end of the game if stalemate or checkmate
+"""
+
+
+def print_message_if_checkmate_or_stalemate(game_state, screen, game_over):
+    if game_state.checkmate or game_state.stalemate:
+        game_over = True
+        text = 'Stalemate' if game_state.stalemate else 'Black wins by checkmate' if game_state.white_to_move else \
+            'White wins by checkmate'
+        draw_endgame_text(screen, text)
+    return game_over
+
+
+"""
+responsible for all design and graphics within the current state of the game
 """
 
 
@@ -254,7 +323,7 @@ def draw_move_log(screen, game_state, font):
     move_log = game_state.move_log
     move_texts = []
     for index in range(0, len(move_log), 2):
-        move_string = str(index//2 + 1) + ". " + str(move_log[index]) + " "
+        move_string = str(index // 2 + 1) + ". " + str(move_log[index]) + " "
         # make sure black made a move
         if index + 1 < len(move_log):
             move_string += str(move_log[index + 1]) + " "
@@ -312,6 +381,12 @@ def animate_move(move, screen, board, clock):
         p.display.flip()
         # 60 frames per animation
         clock.tick(60)
+
+
+"""
+method that writes the text at the end of the game
+text could be stalemate or checkmate depending on the result of the game
+"""
 
 
 def draw_endgame_text(screen, text):
