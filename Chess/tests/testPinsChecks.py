@@ -33,8 +33,8 @@ class TestPinsChecks(unittest.TestCase):
     def test_bishop_pin(self):
         game_state = engine.GameState()
         game_state.white_to_move = True
-        game_state.current_castling_rights.white_king_side =  False
-        game_state.current_castling_rights.black_king_side =  False
+        game_state.current_castling_rights.white_king_side = False
+        game_state.current_castling_rights.black_king_side = False
         new_board = [
             ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "--"],
             ["--", "--", "bp", "bp", "bp", "--", "bp", "--"],
@@ -102,4 +102,3 @@ class TestPinsChecks(unittest.TestCase):
         self.assertEqual(checking_piece_row, 4)
         self.assertEqual(checking_piece_column, 1)
         self.assertEqual(check_direction, (-1, -1))
-
