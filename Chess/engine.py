@@ -44,6 +44,11 @@ class GameState:
                                                self.current_castling_rights.black_king_side,
                                                self.current_castling_rights.white_queen_side,
                                                self.current_castling_rights.black_queen_side)]
+    """
+    setter method for the board
+    """
+    def set_board(self, new_board):
+        self.board = new_board
 
     """
     function takes a move as parameter and executes it
